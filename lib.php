@@ -36,11 +36,76 @@ require_once($CFG->dirroot . '/repository/lib.php');
  */
 
 require 'vendor/autoload.php';
+use Elasticsearch\ClientBuilder;
+
+const ES_DOMAIN = 'pod.univ-lille1.fr';
+const POD_THUMBS_PER_PAGE = 12;
 
 class repository_pod extends repository {
-	const POD_THUMBS_PER_PAGE = 12;
 
-	public function search($search_text, $start = '', $end = '') {
-		$client = Elasticsearch\ClientBuilder::create()->build();
+	public function __construct($repositoryid, $context = SYSCONTEXTID, $options = array()) {
+		parent::__construct($repositoryid, $context, $options);
 	}
+
+	public function init_elastic($domain, $port = 9200) {
+
+		$hosts = [
+			$domain . ':' . $port
+		];
+
+		$client = ClientBuilder::create()
+							->setHosts($hosts)
+							->build();
+		return $client;
+	}
+
+	public function global_search() {
+		return false;
+	}
+
+	public function search($search_text, $page = 0) {
+		$client = $this->init_elastic(ES_DOMAIN);
+		$search_results = array();
+
+		$params = [
+			'index' => 'pod',
+			'body' => [
+				'query' => [
+					'multi_match' => [
+						'query' => $search_text,
+						'fields' => 'title^1.1'
+					]
+				]
+			]
+		];
+
+		$query_results = $client->search($params);
+
+
+
+		foreach($query_results['hits'] as $url) {
+			foreach($url as $source) {
+				$search_results['list'][] = [
+					'shortitle' => $source['_source']['title'],
+					'title' => $source['_source']['title'].'.mp4',
+					'source' => $source['_source']['full_url'],
+					'datecreated' => $source['_source']['date_added'],
+					'size' => '',
+					'thumbnail' => 'https:' . $source['_source']['thumbnail'],
+					'thumbnail_width' => 120,
+					'thumbnail_height' => 120	
+				];
+			}	
+		}
+
+		return $search_results;
+	}
+
+	public function get_listing($path = '', $page = '') {
+		return array('list'=>array());
+    }
+
+    public function supported_returntypes() {
+    	return FILE_EXTERNAL;
+    }
 }
