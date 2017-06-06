@@ -47,6 +47,48 @@ class repository_pod extends repository {
 		parent::__construct($repositoryid, $context, $options);
 	}
 
+	public function check_login() {
+		global $SESSION;
+		$this->keyword = optional_param('pod_keyword', '', PARAM_RAW);
+		if (empty($this->keyword)) {
+			$this->keyword = optional_param('s', '', PARAM_RAW);
+		}
+		$sess_keyword = 'pod_'.$this->id.'_keyword';
+		if (!empty($this->keyword)) {
+			$SESSION->{$sess_keyword} = $this->keyword;
+		}
+
+		return !empty($this->keyword);
+	}
+
+	public function print_login() {
+		$keyword = new stdClass();
+		$keyword->label = get_string('keyword', 'repository_pod').': ';
+		$keyword->id 	= 'input_text_keyword';
+		$keyword->type 	= 'text';
+		$keyword->name 	= 'pod_keyword';
+		$keyword->value = '';
+
+		if ($this->options['ajax']) {
+			$form = array();
+			$form['login'] = array($keyword);
+			$form['nologin'] = true;
+			$form['norefresh'] = true;
+			$form['nosearch'] = true;
+			$form['allowcaching'] = false;
+			return $form;
+		} else {
+			echo <<<EOD
+<table>
+<tr>
+<td>{$keyword->label}</td><td><input name="{$keyword->name}" type="text" /></td>
+</tr>
+</table>
+<input type="submit" />
+EOD;
+		}
+	}
+
 	public function init_elastic($domain, $port = 9200) {
 
 		$hosts = [
@@ -81,11 +123,9 @@ class repository_pod extends repository {
 
 		$query_results = $client->search($params);
 
-
-
 		foreach($query_results['hits'] as $url) {
 			foreach($url as $source) {
-				$search_results['list'][] = [
+				$search_results[] = [
 					'shortitle' => $source['_source']['title'],
 					'title' => $source['_source']['title'].'.mp4',
 					'source' => $source['_source']['full_url'],
@@ -102,7 +142,12 @@ class repository_pod extends repository {
 	}
 
 	public function get_listing($path = '', $page = '') {
-		return array('list'=>array());
+		$list = array();
+		$list['list'] = $this->search($this->keyword);
+		$list['nologin'] = true;
+		$list['norefresh'] = true;
+		$list['nosearch'] = true;
+		return $list;
     }
 
     public function supported_returntypes() {

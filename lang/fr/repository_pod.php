@@ -24,5 +24,5 @@
 
 $string['pluginname'] = 'Pod';
 $string['repositoryname'] = 'Pod';
-$string['configplugin'] = 'Configure Pod Repository';
-$string['keyword'] = 'Search for';
+$string['configplugin'] = 'Configurer le dépôt Pod';
+$string['keyword'] = 'Rechercher';
