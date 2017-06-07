@@ -68,7 +68,6 @@ class repository_pod extends repository {
 		$keyword->type 	= 'text';
 		$keyword->name 	= 'pod_keyword';
 		$keyword->value = '';
-
 		if ($this->options['ajax']) {
 			$form = array();
 			$form['login'] = array($keyword);
@@ -115,7 +114,9 @@ EOD;
 				'query' => [
 					'multi_match' => [
 						'query' => $search_text,
-						'fields' => 'title^1.1'
+						'fields' => ["_id", "title^1.1", "owner^0.9", "owner_full_name^0.9", "description^0.6", "tags.name^1",
+                           "contributors^0.6", "chapters.title^0.5", "enrichments.title^0.5", "type.title^0.6", "disciplines.title^0.6", "channels.title^0.6"
+                        ]
 					]
 				]
 			]
@@ -129,7 +130,8 @@ EOD;
 					'shortitle' => $source['_source']['title'],
 					'title' => $source['_source']['title'].'.mp4',
 					'source' => $source['_source']['full_url'],
-					'datecreated' => $source['_source']['date_added'],
+					'datecreated' => strtotime($source['_source']['date_added']),
+					'author' => $source['_source']['owner_full_name'],
 					'size' => '',
 					'thumbnail' => 'https:' . $source['_source']['thumbnail'],
 					'thumbnail_width' => 120,
