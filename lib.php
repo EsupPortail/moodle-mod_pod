@@ -68,9 +68,22 @@ class repository_pod extends repository {
 		$keyword->type 	= 'text';
 		$keyword->name 	= 'pod_keyword';
 		$keyword->value = '';
+
+		$start_date = new stdClass();
+		$start_date->label = get_string('startdate', 'repository_pod').': ';
+		$start_date->id    = 'input_date_startdate';
+		$start_date->type  = 'date';
+		$start_date->name  = 'pod_startdate';
+
+		$end_date = new stdClass();
+		$end_date->label   = get_string('enddate', 'repository_pod').': ';
+		$end_date->id 	   = 'input_date_enddate';
+		$end_date->type    = 'date';
+		$end_date->name    = 'pod_enddate';
+
 		if ($this->options['ajax']) {
 			$form = array();
-			$form['login'] = array($keyword);
+			$form['login'] = array($keyword, $start_date, $end_date);
 			$form['nologin'] = true;
 			$form['norefresh'] = true;
 			$form['nosearch'] = true;
@@ -106,21 +119,57 @@ EOD;
 
 	public function search($search_text, $page = 0) {
 		$client = $this->init_elastic(ES_DOMAIN);
+		$startdate = optional_param('pod_startdate', '', PARAM_TEXT);
+		$enddate = optional_param('pod_enddate', '', PARAM_TEXT);
 		$search_results = array();
 
-		$params = [
-			'index' => 'pod',
+		$query = ['match_all' => array()];
+		if ($search_text != '') {
+			$query = [
+				'multi_match' => [
+					'query' => $search_text,
+					'fields' => ["_id", "title^1.1", "owner^0.9", "owner_full_name^0.9", "description^0.6", "tags.name^1",
+	                	"contributors^0.6", "chapters.title^0.5", "enrichments.title^0.5", "type.title^0.6", "disciplines.title^0.6", "channels.title^0.6"
+	                ]
+				]
+			];
+		}
+
+		$filterdate = array();
+		$filterdate['range'] = ['date_added' => array()];
+		if ($startdate != '') {
+			$filterdate['range']['date_added']['gte'] = $startdate;
+		}
+		if ($enddate != '') {
+			$filterdate['range']['date_added']['lte'] = $enddate;
+
+
+		$body = [
 			'body' => [
 				'query' => [
-					'multi_match' => [
-						'query' => $search_text,
-						'fields' => ["_id", "title^1.1", "owner^0.9", "owner_full_name^0.9", "description^0.6", "tags.name^1",
-                           "contributors^0.6", "chapters.title^0.5", "enrichments.title^0.5", "type.title^0.6", "disciplines.title^0.6", "channels.title^0.6"
-                        ]
+					'function_score' => [
+						'query' => array(),
+						'functions' => [
+							'gauss' => [
+								'date_added' => [
+									'scale' => '10d',
+									'offset' => '5d',
+									'decay' => 0.5
+								]
+							]
+						]
 					]
 				]
 			]
 		];
+
+		if ($startdate != '' or $enddate != '') {
+			$params['body']['query']['function_score']['query'] = ['filtered' => array()];
+			$params['body']['query']['function_score']['query']['filtered']['query'] = $query;
+			$params['body']['query']['function_score']['query']['filtered']['filter'] = $filterdate;
+		} else {
+			$params['body']['query']['function_score']['query'] = $query;
+		}
 
 		$query_results = $client->search($params);
 

@@ -26,3 +26,5 @@ $string['pluginname'] = 'Pod';
 $string['repositoryname'] = 'Pod';
 $string['configplugin'] = 'Configure Pod Repository';
 $string['keyword'] = 'Search for';
+$string['startdate'] = 'Start date';
+$string['enddate'] = 'End date';
