@@ -24,7 +24,7 @@
 
 $string['pluginname'] = 'Pod';
 $string['repositoryname'] = 'Pod';
-$string['configplugin'] = 'Configure Pod Repository';
-$string['keyword'] = 'Search for';
-$string['startdate'] = 'Start date';
-$string['enddate'] = 'End date';
+$string['configplugin'] = 'Configurer le dépôt Pod';
+$string['keyword'] = 'Rechercher';
+$string['startdate'] = 'Date de début';
+$string['enddate'] = 'Date de fin';

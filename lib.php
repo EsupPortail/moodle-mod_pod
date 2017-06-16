@@ -47,6 +47,60 @@ class repository_pod extends repository {
 		parent::__construct($repositoryid, $context, $options);
 	}
 
+	public function check_login() {
+		global $SESSION;
+		$this->keyword = optional_param('pod_keyword', '', PARAM_RAW);
+		if (empty($this->keyword)) {
+			$this->keyword = optional_param('s', '', PARAM_RAW);
+		}
+		$sess_keyword = 'pod_'.$this->id.'_keyword';
+		if (!empty($this->keyword)) {
+			$SESSION->{$sess_keyword} = $this->keyword;
+		}
+
+		return !empty($this->keyword);
+	}
+
+	public function print_login() {
+		$keyword = new stdClass();
+		$keyword->label = get_string('keyword', 'repository_pod').': ';
+		$keyword->id 	= 'input_text_keyword';
+		$keyword->type 	= 'text';
+		$keyword->name 	= 'pod_keyword';
+		$keyword->value = '';
+
+		$start_date = new stdClass();
+		$start_date->label = get_string('startdate', 'repository_pod').': ';
+		$start_date->id    = 'input_date_startdate';
+		$start_date->type  = 'date';
+		$start_date->name  = 'pod_startdate';
+
+		$end_date = new stdClass();
+		$end_date->label   = get_string('enddate', 'repository_pod').': ';
+		$end_date->id 	   = 'input_date_enddate';
+		$end_date->type    = 'date';
+		$end_date->name    = 'pod_enddate';
+
+		if ($this->options['ajax']) {
+			$form = array();
+			$form['login'] = array($keyword, $start_date, $end_date);
+			$form['nologin'] = true;
+			$form['norefresh'] = true;
+			$form['nosearch'] = true;
+			$form['allowcaching'] = false;
+			return $form;
+		} else {
+			echo <<<EOD
+<table>
+<tr>
+<td>{$keyword->label}</td><td><input name="{$keyword->name}" type="text" /></td>
+</tr>
+</table>
+<input type="submit" />
+EOD;
+		}
+	}
+
 	public function init_elastic($domain, $port = 9200) {
 
 		$hosts = [
@@ -65,31 +119,68 @@ class repository_pod extends repository {
 
 	public function search($search_text, $page = 0) {
 		$client = $this->init_elastic(ES_DOMAIN);
+		$startdate = optional_param('pod_startdate', '', PARAM_TEXT);
+		$enddate = optional_param('pod_enddate', '', PARAM_TEXT);
 		$search_results = array();
 
-		$params = [
-			'index' => 'pod',
+		$query = ['match_all' => array()];
+		if ($search_text != '') {
+			$query = [
+				'multi_match' => [
+					'query' => $search_text,
+					'fields' => ["_id", "title^1.1", "owner^0.9", "owner_full_name^0.9", "description^0.6", "tags.name^1",
+	                	"contributors^0.6", "chapters.title^0.5", "enrichments.title^0.5", "type.title^0.6", "disciplines.title^0.6", "channels.title^0.6"
+	                ]
+				]
+			];
+		}
+
+		$filterdate = array();
+		$filterdate['range'] = ['date_added' => array()];
+		if ($startdate != '') {
+			$filterdate['range']['date_added']['gte'] = $startdate;
+		}
+		if ($enddate != '') {
+			$filterdate['range']['date_added']['lte'] = $enddate;
+
+
+		$body = [
 			'body' => [
 				'query' => [
-					'multi_match' => [
-						'query' => $search_text,
-						'fields' => 'title^1.1'
+					'function_score' => [
+						'query' => array(),
+						'functions' => [
+							'gauss' => [
+								'date_added' => [
+									'scale' => '10d',
+									'offset' => '5d',
+									'decay' => 0.5
+								]
+							]
+						]
 					]
 				]
 			]
 		];
 
+		if ($startdate != '' or $enddate != '') {
+			$params['body']['query']['function_score']['query'] = ['filtered' => array()];
+			$params['body']['query']['function_score']['query']['filtered']['query'] = $query;
+			$params['body']['query']['function_score']['query']['filtered']['filter'] = $filterdate;
+		} else {
+			$params['body']['query']['function_score']['query'] = $query;
+		}
+
 		$query_results = $client->search($params);
-
-
 
 		foreach($query_results['hits'] as $url) {
 			foreach($url as $source) {
-				$search_results['list'][] = [
+				$search_results[] = [
 					'shortitle' => $source['_source']['title'],
 					'title' => $source['_source']['title'].'.mp4',
 					'source' => $source['_source']['full_url'],
-					'datecreated' => $source['_source']['date_added'],
+					'datecreated' => strtotime($source['_source']['date_added']),
+					'author' => $source['_source']['owner_full_name'],
 					'size' => '',
 					'thumbnail' => 'https:' . $source['_source']['thumbnail'],
 					'thumbnail_width' => 120,
@@ -102,7 +193,12 @@ class repository_pod extends repository {
 	}
 
 	public function get_listing($path = '', $page = '') {
-		return array('list'=>array());
+		$list = array();
+		$list['list'] = $this->search($this->keyword);
+		$list['nologin'] = true;
+		$list['norefresh'] = true;
+		$list['nosearch'] = true;
+		return $list;
     }
 
     public function supported_returntypes() {
