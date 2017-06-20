@@ -28,3 +28,7 @@ $string['configplugin'] = 'Configurer le dépôt Pod';
 $string['keyword'] = 'Rechercher';
 $string['startdate'] = 'Date de début';
 $string['enddate'] = 'Date de fin';
+$string['esdomain'] = 'Adresse de Pod';
+$string['esport'] = 'Port Elasticsearch';
+$string['invalidport'] = 'Le port doit être un nombre !';
+$string['invaliddomain'] = 'Adresse invalide !';

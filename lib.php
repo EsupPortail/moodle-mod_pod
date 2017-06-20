@@ -38,7 +38,6 @@ require_once($CFG->dirroot . '/repository/lib.php');
 require 'vendor/autoload.php';
 use Elasticsearch\ClientBuilder;
 
-const ES_DOMAIN = 'pod.univ-lille1.fr';
 const POD_THUMBS_PER_PAGE = 12;
 
 class repository_pod extends repository {
@@ -46,6 +45,41 @@ class repository_pod extends repository {
 	public function __construct($repositoryid, $context = SYSCONTEXTID, $options = array()) {
 		parent::__construct($repositoryid, $context, $options);
 	}
+
+	// Functions for configurations in administration //
+
+	public static function get_type_option_names() {
+		return array_merge(parent::get_type_option_names(), array('es_domain', 'es_port'));
+	}
+
+	public static function type_config_form($mform, $classname = 'repository') {
+		parent::type_config_form($mform);
+
+		$es_domain = get_config('repository_pod', 'es_domain');
+		$es_port = get_config('repository_pod', 'es_port');
+
+		$mform->addElement('text', 'es_domain', get_string('esdomain', 'repository_pod'));
+		$mform->setDefault('es_domain', 'pod.univ.fr');
+		$mform->addRule('es_domain', get_string('required'), 'required', null, 'client');
+
+		$mform->addElement('text', 'es_port', get_string('esport', 'repository_pod'));
+		$mform->setDefault('es_port', 9200);
+		$mform->addRule('es_port', get_string('required'), 'required', null, 'client');
+	}
+
+	public static function type_form_validation($mform, $data, $errors) {
+		if (preg_match_all('/:([0-9]+)/', $data['es_domain'], $out) > 0) {
+			$errors['es_domain'] = get_string('invaliddomain', 'repository_pod');
+		}
+
+		if (!is_numeric($data['es_port'])) {
+			$errors['es_port'] = get_string('invalidport', 'repository_pod');
+		}
+
+		return $errors;
+	}
+
+	// Functions for search form //
 
 	public function check_login() {
 		global $SESSION;
@@ -101,7 +135,9 @@ EOD;
 		}
 	}
 
-	public function init_elastic($domain, $port = 9200) {
+	// Function for search operations //
+
+	public function init_elastic($domain, $port) {
 
 		$hosts = [
 			$domain . ':' . $port
@@ -118,7 +154,7 @@ EOD;
 	}
 
 	public function search($search_text, $page = 0) {
-		$client = $this->init_elastic(ES_DOMAIN);
+		$client = $this->init_elastic($this->get_option('es_domain'), $this->get_option('es_port'));
 		$startdate = optional_param('pod_startdate', '', PARAM_TEXT);
 		$enddate = optional_param('pod_enddate', '', PARAM_TEXT);
 		$search_results = array();
@@ -142,7 +178,7 @@ EOD;
 		}
 		if ($enddate != '') {
 			$filterdate['range']['date_added']['lte'] = $enddate;
-
+		}
 
 		$body = [
 			'body' => [
@@ -192,16 +228,27 @@ EOD;
 		return $search_results;
 	}
 
+	// Function for search result rendering //
+
 	public function get_listing($path = '', $page = '') {
 		$list = array();
+
+		$list['page'] = (int)$page;
+		if ($list['page'] < 1) {
+			$list['page'] = 1;
+		}
+
 		$list['list'] = $this->search($this->keyword);
+
 		$list['nologin'] = true;
 		$list['norefresh'] = true;
-		$list['nosearch'] = true;
+
 		return $list;
     }
 
-    public function supported_returntypes() {
+    // Parameters for the repository //
+	
+	public function supported_returntypes() {
     	return FILE_EXTERNAL;
     }
 }
