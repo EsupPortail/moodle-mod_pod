@@ -29,6 +29,7 @@ $string['keyword'] = 'Search for';
 $string['startdate'] = 'Start date';
 $string['enddate'] = 'End date';
 $string['size'] = 'Videos by page';
+$string['back'] = 'Back';
 $string['esdomain'] = 'Pod address';
 $string['esport'] = 'Elasticsearch port';
 $string['invalidport'] = 'Port must be a number !';

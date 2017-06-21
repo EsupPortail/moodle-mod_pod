@@ -38,7 +38,6 @@ require_once($CFG->dirroot . '/repository/lib.php');
 require 'vendor/autoload.php';
 use Elasticsearch\ClientBuilder;
 
-const POD_THUMBS_PER_PAGE = 12;
 
 class repository_pod extends repository {
 
@@ -49,22 +48,23 @@ class repository_pod extends repository {
 	// Functions for configurations in administration //
 
 	public static function get_type_option_names() {
-		return array_merge(parent::get_type_option_names(), array('es_domain', 'es_port'));
+		return array('es_domain', 'es_port', 'pluginname');
 	}
 
 	public static function type_config_form($mform, $classname = 'repository') {
 		parent::type_config_form($mform);
 
-		$es_domain = get_config('repository_pod', 'es_domain');
-		$es_port = get_config('repository_pod', 'es_port');
-
 		$mform->addElement('text', 'es_domain', get_string('esdomain', 'repository_pod'));
-		$mform->setDefault('es_domain', 'pod.univ.fr');
 		$mform->addRule('es_domain', get_string('required'), 'required', null, 'client');
+		$mform->setType('es_domain', PARAM_RAW);
+		$mform->setDefault('es_domain', 'pod.univ.fr');
+		
 
 		$mform->addElement('text', 'es_port', get_string('esport', 'repository_pod'));
-		$mform->setDefault('es_port', 9200);
 		$mform->addRule('es_port', get_string('required'), 'required', null, 'client');
+		$mform->setType('es_port', PARAM_RAW);
+		$mform->setDefault('es_port', 9200);
+		
 	}
 
 	public static function type_form_validation($mform, $data, $errors) {
@@ -129,9 +129,9 @@ class repository_pod extends repository {
 		if ($this->options['ajax']) {
 			$form = array();
 			$form['login'] = array($keyword, $start_date, $end_date, $size);
-			$form['nologin'] = true;
-			$form['norefresh'] = true;
 			$form['nosearch'] = true;
+			$form['norefresh'] = true;
+			$list['logouttext'] = get_string('back', 'repository_pod');
 			$form['allowcaching'] = false;
 			return $form;
 		} else {
@@ -146,6 +146,10 @@ EOD;
 		}
 	}
 
+	public function logout() {
+		return $this->print_login();
+	}
+
 	// Function for search operations //
 
 	public function init_elastic($domain, $port) {
@@ -157,6 +161,7 @@ EOD;
 		$client = ClientBuilder::create()
 							->setHosts($hosts)
 							->build();
+
 		return $client;
 	}
 
@@ -165,7 +170,7 @@ EOD;
 	}
 
 	public function search($search_text, $page = 0) {
-		$client = $this->init_elastic($this->get_option('es_domain'), $this->get_option('es_port'));
+		$client = $this->init_elastic(get_config('pod', 'es_domain'), get_config('pod', 'es_port'));
 		$startdate = optional_param('pod_startdate', '', PARAM_TEXT);
 		$enddate = optional_param('pod_enddate', '', PARAM_TEXT);
 		$size = optional_param('pod_size', 10, PARAM_TEXT);
@@ -260,8 +265,9 @@ EOD;
 
 		$list['list'] = $this->search($this->keyword, $list['page'] - 1);
 
-		$list['nologin'] = true;
+		$list['nosearch'] = true;
 		$list['norefresh'] = true;
+		$list['logouttext'] = get_string('back', 'repository_pod');
 
 		if (!empty($list['list'])) {
 			$list['pages'] = -1;
