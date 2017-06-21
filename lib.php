@@ -72,6 +72,10 @@ class repository_pod extends repository {
 			$errors['es_domain'] = get_string('invaliddomain', 'repository_pod');
 		}
 
+		if (preg_match_all('/(http|https|ftp):\/\//', $data['es_domain'], $out) > 0) {
+			$errors['es_domain'] = get_string('invaliddomain', 'repository_pod');
+		}
+
 		if (!is_numeric($data['es_port'])) {
 			$errors['es_port'] = get_string('invalidport', 'repository_pod');
 		}
@@ -131,7 +135,7 @@ class repository_pod extends repository {
 			$form['login'] = array($keyword, $start_date, $end_date, $size);
 			$form['nosearch'] = true;
 			$form['norefresh'] = true;
-			$list['logouttext'] = get_string('back', 'repository_pod');
+			$form['logouttext'] = get_string('back', 'repository_pod');
 			$form['allowcaching'] = false;
 			return $form;
 		} else {
@@ -139,6 +143,9 @@ class repository_pod extends repository {
 <table>
 <tr>
 <td>{$keyword->label}</td><td><input name="{$keyword->name}" type="text" /></td>
+<td>{$start_date->label}</td><td><input name="{$start_date->name}" type="date" /></td>
+<td>{$end_date->label}</td><td><input name="{$end_date->name}" type="date" /></td>
+<td>{$size->label}</td><td><input name="{$size->name}" type="text" /></td>
 </tr>
 </table>
 <input type="submit" />
@@ -243,9 +250,9 @@ EOD;
 					'datecreated' => strtotime($source['_source']['date_added']),
 					'author' => $source['_source']['owner_full_name'],
 					'size' => '',
-					'thumbnail' => 'https:' . $source['_source']['thumbnail'],
+					'thumbnail' => $source['_source']['thumbnail'],
 					'thumbnail_width' => 120,
-					'thumbnail_height' => 120	
+					'thumbnail_height' => 80	
 				];
 			}	
 		}
