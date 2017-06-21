@@ -88,7 +88,11 @@ class repository_pod extends repository {
 			$this->keyword = optional_param('s', '', PARAM_RAW);
 		}
 		$sess_keyword = 'pod_'.$this->id.'_keyword';
-		if (!empty($this->keyword)) {
+		if (empty($this->keyword) && optional_param('page', '', PARAM_RAW)) {
+			if (isset($SESSION->{$sess_keyword})) {
+				$this->keyword = $SESSION->{$sess_keyword};
+			}
+		}else if (!empty($this->keyword)) {
 			$SESSION->{$sess_keyword} = $this->keyword;
 		}
 
@@ -115,9 +119,16 @@ class repository_pod extends repository {
 		$end_date->type    = 'date';
 		$end_date->name    = 'pod_enddate';
 
+		$size = new stdClass();
+		$size->label 	   = get_string('size', 'repository_pod').': ';
+		$size->id 		   = 'input_size';
+		$size->type 	   = 'text';
+		$size->name        = 'pod_size';
+		$size->value       = 12;
+
 		if ($this->options['ajax']) {
 			$form = array();
-			$form['login'] = array($keyword, $start_date, $end_date);
+			$form['login'] = array($keyword, $start_date, $end_date, $size);
 			$form['nologin'] = true;
 			$form['norefresh'] = true;
 			$form['nosearch'] = true;
@@ -157,6 +168,7 @@ EOD;
 		$client = $this->init_elastic($this->get_option('es_domain'), $this->get_option('es_port'));
 		$startdate = optional_param('pod_startdate', '', PARAM_TEXT);
 		$enddate = optional_param('pod_enddate', '', PARAM_TEXT);
+		$size = optional_param('pod_size', 10, PARAM_TEXT);
 		$search_results = array();
 
 		$query = ['match_all' => array()];
@@ -171,6 +183,10 @@ EOD;
 			];
 		}
 
+		if (!is_numeric($size)) {
+			$size = 12;
+		}
+
 		$filterdate = array();
 		$filterdate['range'] = ['date_added' => array()];
 		if ($startdate != '') {
@@ -180,19 +196,23 @@ EOD;
 			$filterdate['range']['date_added']['lte'] = $enddate;
 		}
 
-		$body = [
+		$params = [
 			'body' => [
+				'from' => $page * $size,
+				'size' => $size,
 				'query' => [
 					'function_score' => [
 						'query' => array(),
 						'functions' => [
-							'gauss' => [
-								'date_added' => [
-									'scale' => '10d',
-									'offset' => '5d',
-									'decay' => 0.5
-								]
-							]
+							array(
+								'gauss' => [
+									'date_added' => [
+										'scale' => '10d',
+										'offset' => '5d',
+										'decay' => 0.5
+									]	
+								]	
+							)
 						]
 					]
 				]
@@ -238,10 +258,18 @@ EOD;
 			$list['page'] = 1;
 		}
 
-		$list['list'] = $this->search($this->keyword);
+		$list['list'] = $this->search($this->keyword, $list['page'] - 1);
 
 		$list['nologin'] = true;
 		$list['norefresh'] = true;
+
+		if (!empty($list['list'])) {
+			$list['pages'] = -1;
+		}else if ($list['page'] > 1) {
+			$list['pages'] = $list['page'];
+		}else {
+			$list['pages'] = 0;
+		}
 
 		return $list;
     }
