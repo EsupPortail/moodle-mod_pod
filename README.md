@@ -10,7 +10,7 @@ The integration of videos from Pod into courses become simpler.
 
 ## Install
 To install the mod follow these steps :
-* Have Moodle installed in version 3.3 or higher
+* Have Moodle installed in version 3.1 or higher
 * Download the mod as a Zip from this github repository.
 * Move the .zip archive to your 'repository' dir of your Moodle (Default path on Linux : /var/www/moodle/repository, on Widows : C:\server\moodle\repository)
 * Extract the archive. You should now have a folder named 'pod'.
