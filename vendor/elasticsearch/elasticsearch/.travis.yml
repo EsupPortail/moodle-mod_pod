@@ -1,51 +1,67 @@
 language: php
 
+jdk:
+  - oraclejdk8
+
+addons:
+  apt:
+    packages:
+      - oracle-java8-installer
+
 branches:
   except:
     - 0.4
 
-sudo: false
-
-php:
-  - 7.0
-  - 5.6
-  - 5.5
-  - 5.4
-  - hhvm
+sudo: true
 
 matrix:
   fast_finish: true
   include:
-    - php: 5.6
-      env: ES_VERSION="2.2" TEST_BUILD_REF="origin/2.2"
-    - php: 5.6
-      env: ES_VERSION="2.1" TEST_BUILD_REF="origin/2.1"
-    - php: 5.6
-      env: ES_VERSION="2.0" TEST_BUILD_REF="origin/2.0"
-    - php: 5.6
-      env: ES_VERSION="1.7" TEST_BUILD_REF="origin/1.7"
-  allow_failures:
-    - php: hhvm
+    - php: 7.0
+      env: ES_VERSION="6.5.0"
+
+    - php: 7.1
+      env: ES_VERSION="6.5.0"
+
+    - php: 7.2
+      env: ES_VERSION="6.5.0"
+
+    - php: 7.3
+      env: ES_VERSION="6.0.0"
+    - php: 7.3
+      env: ES_VERSION="6.1.0"
+    - php: 7.3
+      env: ES_VERSION="6.2.0"
+    - php: 7.3
+      env: ES_VERSION="6.3.0"
+    - php: 7.3
+      env: ES_VERSION="6.4.0"
+    - php: 7.3
+      env: ES_VERSION="6.5.0"
+
 
 env:
   global:
-    - ES_VERSION="2.3"
-    - TEST_BUILD_REF="origin/2.3"
     - ES_TEST_HOST=http://localhost:9200
+    - JAVA_HOME="/usr/lib/jvm/java-8-oracle/jre"
 
 before_install:
+  - sudo update-java-alternatives -s java-8-oracle
   - ./travis/download_and_run_es.sh
 
 install:
-  - composer install --prefer-source
+  - composer install --prefer-dist
 
 before_script:
-  - if [ $TRAVIS_PHP_VERSION = '7.0' ]; then PHPUNIT_FLAGS="--coverage-clover ./build/logs/clover.xml"; fi
+  - if [ $TRAVIS_PHP_VERSION = '7.3' ]; then PHPUNIT_FLAGS="--coverage-clover ./build/logs/clover.xml"; fi
   - php util/RestSpecRunner.php
   - php util/EnsureClusterAlive.php
 
 script:
+  - if [ $TRAVIS_PHP_VERSION != '7.3' ]; then composer run-script phpcs; fi
+  - composer run-script phpstan
   - vendor/bin/phpunit $PHPUNIT_FLAGS
+  - vendor/bin/phpunit -c phpunit-integration.xml --group sync $PHPUNIT_FLAGS
 
 after_script:
-  - if [ $TRAVIS_PHP_VERSION = '7.0' ]; then php vendor/bin/coveralls; fi
+  - if [ $TRAVIS_PHP_VERSION = '7.3' ]; then php vendor/bin/coveralls; fi

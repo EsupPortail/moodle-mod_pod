@@ -18,6 +18,7 @@
  * @package    repository
  * @subpackage pod
  * @copyright  2017 Obled Joel
+ * @copyright  2019 Mifsud Gaël
  * @author     Obled Joel <joel.obled@univ-lille1.fr>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */

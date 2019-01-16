@@ -21,6 +21,7 @@
  * @since Moodle 3.3
  * @package    repository_pod
  * @copyright  2017 Obled Joel
+ * @copyright  2019 Mifsud Gaël
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 require_once($CFG->dirroot . '/repository/lib.php');
@@ -31,7 +32,8 @@ require_once($CFG->dirroot . '/repository/lib.php');
  *
  * @since Moodle 3.3
  * @package    repository_pod
- * @copyright  2017 Obled Joel 
+ * @copyright  2017 Obled Joelo
+ * @copyright  2019 Mifsud Gaël
  * @licence    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
